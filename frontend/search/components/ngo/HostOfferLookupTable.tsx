@@ -151,12 +151,13 @@ const HostOfferLookupTable = ({data_ro, data_rw, refetch_rw, onFilteredDataChang
 
 
   useEffect(() => {
-    const data =  filterUndefOrNull( data_ro
+    const data = filterUndefOrNull( data_ro
       ?.map( e_ro => ({
-          ...e_ro,
-          ...rw_default,
-          ...((data_rw?.find((e_rw) => e_rw.id === e_ro.id)))
-      })) || [] ).map(v => transformValue(v, columnsRaw))
+	...rw_default,
+        ...data_rw?.find((e_rw) => e_ro.id_tmp === e_rw.id || `rw_${e_ro.id}` === e_rw.id),
+        ...e_ro
+      }) ) || [])
+      .map(v => transformValue(v, columnsRaw))
 
     // @ts-ignore
     data && setDataSource(data)
