@@ -47,5 +47,10 @@
     "calendar.clearButtonText": "Leeren",
     "calendar.okButtonText": "OK",
     "calendar.cancelButtonText": "abbrechen"
+  },
+  "options": {
+    "clusterMarkers": "Marker auf Karte Gruppieren",
+    "showVerboseHeader": "zeige erweiterten Tabellenkopf",
+    "debug": "Debuginformationen loggen"
   }
 }

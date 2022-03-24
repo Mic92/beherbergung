@@ -1,57 +1,97 @@
 import React, {useCallback, useEffect, useState} from 'react'
 import 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import {config} from "../../config"
 
 import {
   LayersControl,
   MapContainer,
-  //Marker,
-  //Polygon,
-  //Polyline,
-  Popup,
-  Circle,
-  TileLayer,
-  useMap,
-  useMapEvent
+  TileLayer
 } from '@monsonjeremy/react-leaflet'
 import * as L from 'leaflet'
-import { useLeafletStore } from './LeafletStore'
+import {Marker, useLeafletStore} from './LeafletStore'
+import {IdLatLngCallback} from "../util/geo";
+import {useAppConfigStore} from "../config/appConfigStore";
+import CustomCircleMarker from "../leaflet/marker/CustomCircleMarker";
+import MarkerClusterLayer from "../leaflet/MarkerClusterLayer";
+import {customCircleMarkerFactory} from "../leaflet/marker/customCircleMarkerFactory";
+import BoundsChangeListener from "../leaflet/BoundsChangeListener";
+import FitBounds from "../leaflet/FitBounds";
+import {VisualMarker} from "../leaflet/marker/visualMarker";
 
-type LeafletMapProps = {onBoundsChange?: (bounds: L.LatLngBounds) => void}
+type LeafletMapProps = { onBoundsChange?: (bounds: L.LatLngBounds) => void }
 
-const BoundsChangeListener = ({onBoundsChange}: {onBoundsChange?: (bounds: L.LatLngBounds) => void}) => {
-  const leafletStore = useLeafletStore()
+const createClusterCustomIcon = function (cluster: L.MarkerCluster) {
+  return L.divIcon({
+    html: `<span>${cluster.getChildCount()}</span>`,
+    className: "marker-cluster-custom",
+    iconSize: L.point(40, 40, true)
+  });
+};
 
-  const map = useMap()
-
-  const updateBounds = useCallback(
-    () => {
-      leafletStore.setCenter(map.getCenter())
-
-      // onBoundsChange is unused at the moment
-      onBoundsChange && onBoundsChange(
-        map.getBounds()
-      )
-    },
-    [map, onBoundsChange],
-  )
-
-  useEffect(() => {
-    updateBounds()
-  }, [map, updateBounds])
-
-  useMapEvent('moveend', (e) => updateBounds())
-  useMapEvent('load', (e) =>  updateBounds())
-  return null
+const AllMarkers = ({
+                      markers,
+                      selectedId,
+                      onMarkerSelect
+                    }: { markers: Marker[], selectedId?: string, onMarkerSelect?: (id?: string) => void }) => {
+  return <>
+    {markers
+      .filter(({withinFilter, id}) => !withinFilter && id !== selectedId)
+      .map((m, i) =>
+        <CustomCircleMarker
+          key={m.id + i}
+          marker={m} color={'grey'}
+          onMarkerClick={onMarkerSelect}/>)}
+    {markers
+      .filter(({withinFilter, id}) => withinFilter && id !== selectedId)
+      .map((m, i) =>
+        <CustomCircleMarker
+          key={m.id + i}
+          marker={m} color={'blue'}
+          onMarkerClick={onMarkerSelect}/>)}
+  </>
 }
 
 const LeafletMap = ({onBoundsChange}: LeafletMapProps) => {
-  const [zoom, setZoom] = useState<number>( 8 )
-  const [position, setPosition] = useState<L.LatLngExpression>(  {
-    lat: 51.0833,
-    lng: 13.73126,
-  } )
-  const leafletStore = useLeafletStore()
+  const [zoom, setZoom] = useState<number>(10)
+  const [position, setPosition] = useState<L.LatLngExpression>({
+    lat: config.initial_lat || 51.0833,
+    lng: config.initial_lng || 13.73126,
+  })
+  const {markers, selectedId, setSelectedId, setZoomToCoordinateCallback, setCenter} = useLeafletStore()
+  const {markerClusterDisabled} = useAppConfigStore()
+
+  const setZoomToIdCallbackCallback: (fitBoundsToMarkerIdCallback: IdLatLngCallback) => void = useCallback(
+    fitBoundsToMarkerIdCallback => setZoomToCoordinateCallback(fitBoundsToMarkerIdCallback),
+    [setZoomToCoordinateCallback],
+  );
+
+  const handleMarkerSelect = useCallback(
+    (id: string) => {
+      setSelectedId(id)
+    },
+    [setSelectedId]);
+
+  const [visualMarkersOutsideFilter, setVisualMarkersOutsideFilter] = useState<VisualMarker<Marker>[]>([]);
+  const [visualMarkersWithinFilter, setVisualMarkersWithinFilter] = useState<VisualMarker<Marker>[]>([]);
+
+  useEffect(() => {
+    const _visualMarkers: VisualMarker<Marker>[] = markers?.map((marker) => ({
+      marker,
+      getId: () => marker.id,
+      getPathOptions: () => ({
+        color: marker.id == selectedId ? 'red' : (marker.withinFilter ? 'blue' : 'grey'),
+        radius: marker.radius / 100
+      }),
+      getCenter: () => L.latLng([marker.lat, marker.lng]),
+      getEvents: () => ({
+        click: handleMarkerSelect
+      })
+    })) || []
+    setVisualMarkersOutsideFilter(_visualMarkers.filter(({marker}) => marker.id === selectedId || !marker.withinFilter ))
+    setVisualMarkersWithinFilter(_visualMarkers.filter(({marker}) => marker.withinFilter ))
+  }, [markers,selectedId, handleMarkerSelect]);
+
 
   return (
     <>
@@ -64,24 +104,28 @@ const LeafletMap = ({onBoundsChange}: LeafletMapProps) => {
         }}
         center={position}
         zoom={zoom}
-        maxZoom={24}
+        maxZoom={18}
       >
-        <BoundsChangeListener onBoundsChange={onBoundsChange}/>
+        <BoundsChangeListener
+          onCenterChange={setCenter}
+          onBoundsChange={onBoundsChange}/>
+        <FitBounds onSignatureUpdate={setZoomToIdCallbackCallback}/>
         <LayersControl position="topright">
-          <LayersControl.BaseLayer checked name="OpenStreetMap.default">
+          <LayersControl.BaseLayer checked name="Terrain">
+            <TileLayer
+              attribution={"Map tiles by <a href=\"http://stamen.com\">Stamen Design</a>, under <a href=\"http://creativecommons.org/licenses/by/3.0\">CC BY 3.0</a>. Data by <a href=\"http://openstreetmap.org\">OpenStreetMap</a>, under <a href=\"http://www.openstreetmap.org/copyright\">ODbL</a>."}
+              url="https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png"/>
+          </LayersControl.BaseLayer>
+          <LayersControl.BaseLayer name="OpenStreetMap.default">
             <TileLayer
               attribution='&amp;copy <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               maxNativeZoom={18}
             />
           </LayersControl.BaseLayer>
-          <LayersControl.BaseLayer name="Terain">
-            <TileLayer url="https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.png"
-
-            />
-          </LayersControl.BaseLayer>
           <LayersControl.BaseLayer name="swisstopo">
-            <TileLayer url="https://api.maptiler.com/maps/ch-swisstopo-lbm-dark/256/{z}/{x}/{y}.png?key=gR2UbhjBpXWL68Dc4a3f" />
+            <TileLayer
+              url="https://api.maptiler.com/maps/ch-swisstopo-lbm-dark/256/{z}/{x}/{y}.png?key=gR2UbhjBpXWL68Dc4a3f"/>
           </LayersControl.BaseLayer>
           <LayersControl.BaseLayer name="Arcgis Satelite">
             <TileLayer
@@ -90,19 +134,23 @@ const LeafletMap = ({onBoundsChange}: LeafletMapProps) => {
               maxNativeZoom={20}
             />
           </LayersControl.BaseLayer>
-
-
-          {leafletStore.markers.map(m =>
-	    /** TODO: Maybe a clustered marker would be helpfull, but we loose the possibility of showing the radius (display accuracy of the coordinate).
-	    *         Probably the best solution is showing Circle and clustered marker.
-	    **/
-            <Circle key={m.id + Math.random() /* Till we have unique ids from the db */}
-                    center={[m.lat, m.lng]}
-                    radius={m.radius}
-                    pathOptions={{color: 'grey'}}>
-              <Popup><a href={`#${m.id}`}>{ m.content }</a></Popup>
-            </Circle>
-          )}
+          <MarkerClusterLayer
+            markers={visualMarkersOutsideFilter}
+            disableCluster={true}
+            leafletMarkerFactory={customCircleMarkerFactory}
+          />
+          <MarkerClusterLayer
+            markers={visualMarkersWithinFilter}
+            disableCluster={markerClusterDisabled}
+            leafletMarkerFactory={customCircleMarkerFactory}
+            clusterGroupOptions={{
+              maxClusterRadius: 60,
+              disableClusteringAtZoom: 14,
+              zoomToBoundsOnClick: true,
+              spiderfyOnMaxZoom: true,
+              removeOutsideVisibleBounds: true,
+              iconCreateFunction: createClusterCustomIcon
+            }}/>
         </LayersControl>
       </MapContainer>
     </>)

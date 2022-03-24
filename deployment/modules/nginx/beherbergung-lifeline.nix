@@ -1,5 +1,4 @@
-{ config, pkgs, nixpkgs, ... }:
-{
+{config, ...}: {
   imports = [
     ./common.nix
   ];
@@ -10,5 +9,4 @@
     "search.beherbergung.mission-lifeline.de"
     "submission.beherbergung.mission-lifeline.de"
   ];
-
 }

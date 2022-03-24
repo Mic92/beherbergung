@@ -1,5 +1,4 @@
-{ config, pkgs, nixpkgs, ... }:
-{
+{config, ...}: {
   ## After updating the nixpkgs, the acme-unit failed. It was mitigated by:
   ## > chmod acme:nginx /var/lib/acme/
 
@@ -30,5 +29,5 @@
     };
   };
 
-  networking.firewall.allowedTCPPorts = [ 80 443 ];
+  networking.firewall.allowedTCPPorts = [80 443];
 }

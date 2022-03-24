@@ -23,8 +23,10 @@
 (s/def ::admin-passphrase (s/nilable string?))  ;; allows setting up ngo logins and encrypted downloads of db exports
 (s/def ::admin-gpg-id string?)
 
-(s/def ::import-file (s/nilable string?))
+(s/def ::import-public boolean?)
 (s/def ::import-ngo (s/nilable string?))
+(s/def ::import-file (s/nilable string?))
+(s/def ::import-limit (s/nilable number?))
 
 (s/def ::mail-host string?)
 (s/def ::mail-user string?)
@@ -43,8 +45,10 @@
                               ::db-validate
                               ::admin-passphrase
                               ::admin-gpg-id
-                              ::import-file
+                              ::import-public
                               ::import-ngo
+                              ::import-file
+                              ::import-limit
                               ;::mail-host ::mail-user ::mail-pass ::mail-port ::mail-from
                              ]))
 

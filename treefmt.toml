@@ -1,0 +1,46 @@
+[formatter.nix]
+command = "alejandra"
+includes = ["*.nix"]
+excludes = ["yarn.nix"]
+
+[formatter.clojure]
+command = "sh"
+options = [
+  "-euc",
+  """
+  cd backend
+  clj-kondo --lint "$@"
+"""
+]
+includes = ["*.clj"]
+# TODO first we need configure .clj-kondo/config.edn to handle the defstate macro
+excludes = ["backend/src/beherbergung/config/state.clj"]
+
+[formatter.shell]
+command = "sh"
+options = [
+    "-eucx",
+    """
+# This is a bug in treefmt, the script should not be called without arguments
+if [[ $# -le 0 ]]; then exit 0; fi
+shfmt -i 2 -s -w "$@"
+    """
+]
+includes = ["*.sh"]
+excludes = []
+
+[formatter.prettier]
+command = "prettier"
+options = ["--write"]
+includes = [
+    "*.css",
+    "*.html",
+    "*.js",
+    "*.json",
+    "*.jsx",
+    "*.md",
+    "*.mdx",
+    "*.scss",
+    # frontend devs seems to use a different formatting tool?
+    #"*.ts",
+]

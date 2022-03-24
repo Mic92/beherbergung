@@ -1,2 +1,7 @@
 {
+  "options": {
+    "clusterMarkers": "cluster markers",
+    "showVerboseHeader": "show verbose header",
+    "debug": "Debug logs"
+  }
 }
