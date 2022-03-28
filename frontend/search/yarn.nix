@@ -5002,11 +5002,11 @@
       };
     }
     {
-      name = "react_query___react_query_3.34.16.tgz";
+      name = "react_query___react_query_3.34.19.tgz";
       path = fetchurl {
-        name = "react_query___react_query_3.34.16.tgz";
-        url  = "https://registry.yarnpkg.com/react-query/-/react-query-3.34.16.tgz";
-        sha1 = "279ea180bcaeaec49c7864b29d1711ee9f152594";
+        name = "react_query___react_query_3.34.19.tgz";
+        url  = "https://registry.yarnpkg.com/react-query/-/react-query-3.34.19.tgz";
+        sha1 = "0ff049b6e0d2ed148e9abfdd346625d0e88dc229";
       };
     }
     {
